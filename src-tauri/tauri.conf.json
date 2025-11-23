@@ -1,8 +1,8 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "jslive",
+  "productName": "codelive",
   "version": "0.1.0",
-  "identifier": "com.void.jslive",
+  "identifier": "com.void.codelive",
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
@@ -13,9 +13,9 @@
     "windows": [
       {
         "decorations": false,
-        "title": "JsLive",
-        "width": 1200,
-        "height": 800
+        "title": "CodeLive",
+        "width": 800,
+        "height": 600
       }
     ],
     "security": {
