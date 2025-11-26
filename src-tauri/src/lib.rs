@@ -63,7 +63,7 @@ fn run_php(code: String) -> Result<String, String> {
 
 #[tauri::command]
 fn run_python(code: String) -> Result<String, String> {
-    let mut child = Command::new("python3")
+    let child = Command::new("python3")
         .arg("-c")
         .arg(&code)
         .stdin(Stdio::null())
