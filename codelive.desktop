@@ -1,0 +1,10 @@
+[Desktop Entry]
+Version=1.0
+Name=CodeLive
+Comment=Live development environment
+Exec=/home/void/.config/hypr/bin/codelive
+Terminal=false
+Type=Application
+Icon=application-javascript
+Categories=Development;Utility;
+StartupNotify=false

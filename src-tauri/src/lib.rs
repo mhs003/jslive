@@ -1,6 +1,6 @@
 use std::io::Write;
 use std::process::{Command, Stdio};
-use tauri::command;
+// use tauri::command;
 
 #[tauri::command]
 fn run_njs(code: String) -> Result<String, String> {

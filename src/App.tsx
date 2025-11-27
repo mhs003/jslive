@@ -3,7 +3,7 @@ import CodeMirror, { Extension } from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { php } from "@codemirror/lang-php";
 import { python } from "@codemirror/lang-python";
-import { aura } from "@uiw/codemirror-theme-aura";
+// import { aura } from "@uiw/codemirror-theme-aura";
 import { dracula } from "@uiw/codemirror-theme-dracula";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -11,13 +11,11 @@ import {
     Trash2,
     Code2,
     ChevronDown,
-    Settings,
     Terminal,
-    AlertCircle,
     FileCode,
     Check,
     XCircle,
-    Activity,
+    LoaderCircle,
 } from "lucide-react";
 import { Button } from "./components/button";
 import IconGithub from "./components/icon-github";
@@ -28,6 +26,7 @@ type LanguageConfig = {
     key: string;
     handler: string;
     editor_extensions: Extension[] | undefined;
+    snippet: string;
 };
 
 const LANGUAGES: LanguageConfig[] = [
@@ -36,6 +35,7 @@ const LANGUAGES: LanguageConfig[] = [
         key: "nodejs",
         handler: "run_njs",
         editor_extensions: [javascript()],
+        snippet: "console.log(\"Hello World\")\n"
     },
     // {
     //     name: "Bun",
@@ -48,18 +48,20 @@ const LANGUAGES: LanguageConfig[] = [
         key: "php",
         handler: "run_php",
         editor_extensions: [php()],
+        snippet: "<?php\necho \"Hello World\";\n"
     },
     {
         name: "Python",
         key: "python",
         handler: "run_python",
         editor_extensions: [python()],
+        snippet: "print(\"Hello World\")\n"
     },
 ];
 
 export default function App() {
     const debounceRef = useRef<number | null>(null);
-    const logsEndRef = useRef(null);
+    const logsEndRef = useRef<HTMLDivElement | null>(null);
 
     const [code, setCode] = useState<string>("");
     const [currentLang, setCurrentLang] = useState<LanguageConfig>(
@@ -101,33 +103,34 @@ export default function App() {
         const sortLang =
             LANGUAGES.find((e) => e.key === event.target.value) || LANGUAGES[0];
         setCurrentLang(sortLang);
-        setCode("");
-        setLogs([
-            {
-                id: 1,
-                type: "info",
-                text: "Language changed to " + sortLang.name,
-                time: new Date(),
-            },
-        ]);
+        setCode(sortLang.snippet);
+        setLogs([]);
+        addLog("Language changed to " + sortLang.name, "info");
     };
 
     const onCodeChange = useCallback((value: string, _: any) => {
         setCode(value);
         if (debounceRef.current) clearTimeout(debounceRef.current);
-        debounceRef.current = setTimeout(() => {
-            runCode(value, currentLang.handler);
-        }, 500);
-    }, []);
 
-    async function runCode(currentCode: string = code, language: string) {
+        const freshCode = value;
+        const freshLang = currentLang.handler;
+
+        debounceRef.current = setTimeout(() => {
+            runCode(freshCode, freshLang);
+        }, 500);
+    }, [currentLang]);
+
+    async function runCode(freshCode: string, freshLang: string) {
+        const currentCode = freshCode;
+        const language = freshLang;
+
         setIsRunning(true);
         let finalCode = currentCode;
         if (
             language === "run_php" &&
             currentCode.toLowerCase().startsWith("<?php")
         ) {
-            finalCode = code.substring(5);
+            finalCode = currentCode.substring(5);
         }
         try {
             const output: string = await invoke(language, { code: finalCode });
@@ -204,9 +207,9 @@ export default function App() {
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                     </div>
 
-                    <Button variant="success" className="cursor-pointer">
+                    <Button onClick={() => runCode(code, currentLang.handler)} variant="success" className="cursor-pointer" disabled={isRunning}>
                         {isRunning ? (
-                            <Activity className="w-4 h-4 mr-2 animate-spin" />
+                            <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
                             <Play className="w-4 h-4 mr-2 fill-current" />
                         )}
@@ -266,16 +269,19 @@ export default function App() {
                         </button>
                     </div>
 
-                    <div className="flex-1 p-4 px-2 font-[monospace] text-sm overflow-y-auto select-auto font-medium cursor-text">
+                    <div className={cn("flex-1 p-4 px-2 font-[monospace] text-sm overflow-y-auto font-medium", {
+                        "cursor-text select-auto": !isDragging,
+                        "cursor-col-resize select-none": isDragging,
+                    })}>
                         <div className="divide-y divide-zinc-900 space-y-1">
                             {logs.map((log) => (
                                 <div
                                     key={log.id}
-                                    className="flex flex-col gap-0.5 animate-in fade-in slide-in-from-bottom-1 duration-200 hover:bg-zinc-900 p-0.5 px-1"
+                                    className="flex flex-col gap-0.5 animate-in fade-in duration-200 hover:bg-zinc-900 p-0.5 px-1"
                                 >
                                     <span
                                         className={cn(
-                                            "text-zinc-600 text-xs mb-0.5 select-none shrink-0",
+                                            "text-zinc-600 text-xs mb-0.5 select-none shrink-0 animate-fade-in",
                                             {
                                                 "text-emerald-400":
                                                     log.type !== "error",
@@ -284,13 +290,12 @@ export default function App() {
                                     >
                                         {log.time
                                             ? log.time.toLocaleTimeString([], {
-                                                  hour12: false,
-                                              })
+                                                hour12: false,
+                                            })
                                             : ""}
                                     </span>
-
                                     <span
-                                        className={cn("break-all", {
+                                        className={cn("break-all animate-fade-in whitespace-pre-line wrap-break-word", {
                                             "text-red-400":
                                                 log.type === "error",
                                             "text-emerald-400":
