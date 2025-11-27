@@ -29,6 +29,8 @@ type LanguageConfig = {
     snippet: string;
 };
 
+const VERSION = 'v0.1.1';
+
 const LANGUAGES: LanguageConfig[] = [
     {
         name: "NodeJS",
@@ -226,7 +228,7 @@ export default function App() {
                 >
                     {" "}
                     <div className="h-9 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between select-none">
-                        <span className="text-xs font-mono text-zinc-400 font-medium">
+                        <span className="text-xs font-[monospace] text-zinc-400 font-medium">
                             EDITOR
                         </span>
                     </div>
@@ -265,7 +267,7 @@ export default function App() {
                 <div className="flex flex-col bg-zinc-950 flex-1">
                     <div className="h-9 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 select-none">
                         <div className="flex gap-6 h-full">
-                            <button className="text-xs font-mono text-zinc-100 border-b-2 border-blue-500 h-full px-1">
+                            <button className="text-xs font-[monospace] text-zinc-100 border-b-2 border-blue-500 h-full px-1">
                                 TERMINAL
                             </button>
                         </div>
@@ -349,7 +351,7 @@ export default function App() {
             </main>
 
             <footer className="h-7 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between pr-3 text-xs select-none text-zinc-500">
-                <div className="flex items-center justify-center gap-4 h-full">
+                <div className="flex items-center justify-center h-full">
                     <a
                         href="https://github.com/mhs003"
                         target="_blank"
@@ -358,10 +360,12 @@ export default function App() {
                         <IconGithub className="mb-0.5" />
                         <span>Monzurul Hasan</span>
                     </a>
+                    <span className="w-px h-full bg-zinc-800 mr-2"></span>
+                    <a href="https://github.com/mhs003/codelive/releases/" target="_blank" className="font-[monospace] hover:text-zinc-400 hover:underline">{VERSION}</a>
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <span className="font-mono">
+                    <span className="font-[monospace]">
                         Ln {cursorPos.line}, Col {cursorPos.col}
                     </span>
                     <span className="hidden sm:inline">UTF-8</span>
