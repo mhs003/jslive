@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from "react";
 import CodeMirror, { Extension } from "@uiw/react-codemirror";
-import { javascript } from "@codemirror/lang-javascript";
+import { javascript, typescriptLanguage } from "@codemirror/lang-javascript";
 import { php } from "@codemirror/lang-php";
 import { python } from "@codemirror/lang-python";
 // import { aura } from "@uiw/codemirror-theme-aura";
@@ -29,7 +29,7 @@ type LanguageConfig = {
     snippet: string;
 };
 
-const VERSION = 'v0.1.1';
+const VERSION = "v0.1.1";
 
 const LANGUAGES: LanguageConfig[] = [
     {
@@ -37,27 +37,28 @@ const LANGUAGES: LanguageConfig[] = [
         key: "nodejs",
         handler: "run_njs",
         editor_extensions: [javascript()],
-        snippet: "console.log(\"Hello World\")\n"
+        snippet: 'console.log("Hello World")\n',
     },
-    // {
-    //     name: "Bun",
-    //     key: "bun",
-    //     handler: "run_bun",
-    //     editor_extensions: [javascript()],
-    // },
+    {
+        name: "Bun (TypeScript)",
+        key: "bun",
+        handler: "run_bun",
+        editor_extensions: [javascript({ jsx: true, typescript: true })],
+        snippet: 'console.log("Hello World")\n',
+    },
     {
         name: "PHP",
         key: "php",
         handler: "run_php",
         editor_extensions: [php()],
-        snippet: "<?php\necho \"Hello World\";\n"
+        snippet: '<?php\necho "Hello World";\n',
     },
     {
         name: "Python",
         key: "python",
         handler: "run_python",
         editor_extensions: [python()],
-        snippet: "print(\"Hello World\")\n"
+        snippet: 'print("Hello World")\n',
     },
 ];
 
@@ -110,32 +111,38 @@ export default function App() {
         addLog("Language changed to " + sortLang.name, "info");
     };
 
-    const onCodeChange = useCallback((value: string, _: any) => {
-        setCode(value);
-        if (debounceRef.current) clearTimeout(debounceRef.current);
 
-        const freshCode = value;
-        const freshLang = currentLang.handler;
+    const onCodeChange = (value: string) => {
+        debounce((value: string) => {
+            setCode(value);
+        }, 500)(value);
+    };
 
-        debounceRef.current = setTimeout(() => {
-            runCode(freshCode, freshLang);
-        }, 500);
-    }, [currentLang]);
+    function debounce<T extends (...args: any[]) => any>(fn: T, time: number) {
+        return (...args: Parameters<T>) => {
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
+
+            debounceRef.current = setTimeout(() => {
+                fn(...args);
+            }, time);
+        };
+    }
+
+    useEffect(() => {
+        if(!!code) runCode(code, currentLang.handler);
+    }, [code])
 
     async function runCode(freshCode: string, freshLang: string) {
         const currentCode = freshCode;
         const language = freshLang;
 
         setIsRunning(true);
-        let finalCode = currentCode;
-        if (
-            language === "run_php" &&
-            currentCode.toLowerCase().startsWith("<?php")
-        ) {
-            finalCode = currentCode.substring(5);
-        }
         try {
-            const output: string = await invoke(language, { code: finalCode });
+            const output: string = await invoke(language, {
+                code: currentCode,
+            });
             addLog(output, "output");
         } catch (err) {
             addLog(err as string, "error");
@@ -209,7 +216,12 @@ export default function App() {
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                     </div>
 
-                    <Button onClick={() => runCode(code, currentLang.handler)} variant="success" className="cursor-pointer" disabled={isRunning}>
+                    <Button
+                        onClick={() => runCode(code, currentLang.handler)}
+                        variant="success"
+                        className="cursor-pointer"
+                        disabled={isRunning}
+                    >
                         {isRunning ? (
                             <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
                         ) : (
@@ -245,7 +257,7 @@ export default function App() {
                                 const line = view.state.doc.lineAt(pos);
                                 setCursorPos({
                                     line: line.number,
-                                    col: pos - line.from + 1
+                                    col: pos - line.from + 1,
                                 });
                             }}
                             autoFocus
@@ -280,10 +292,15 @@ export default function App() {
                         </button>
                     </div>
 
-                    <div className={cn("flex-1 p-4 px-2 font-[monospace] text-sm overflow-y-auto font-medium", {
-                        "cursor-text select-auto": !isDragging,
-                        "cursor-col-resize select-none": isDragging,
-                    })}>
+                    <div
+                        className={cn(
+                            "flex-1 p-4 px-2 font-[monospace] text-sm overflow-y-auto font-medium",
+                            {
+                                "cursor-text select-auto": !isDragging,
+                                "cursor-col-resize select-none": isDragging,
+                            }
+                        )}
+                    >
                         <div className="divide-y divide-zinc-900 space-y-1">
                             {logs.map((log) => (
                                 <div
@@ -301,27 +318,30 @@ export default function App() {
                                     >
                                         {log.time
                                             ? log.time.toLocaleTimeString([], {
-                                                hour12: false,
-                                            })
+                                                  hour12: false,
+                                              })
                                             : ""}
                                     </span>
                                     <span
-                                        className={cn("break-all animate-fade-in whitespace-pre-line wrap-break-word", {
-                                            "text-red-400":
-                                                log.type === "error",
-                                            "text-emerald-400":
-                                                log.type === "success",
-                                            "text-blue-400":
-                                                log.type === "system",
-                                            "text-zinc-500 italic":
-                                                log.type === "info",
-                                            "text-zinc-300": ![
-                                                "error",
-                                                "success",
-                                                "system",
-                                                "info",
-                                            ].includes(log.type),
-                                        })}
+                                        className={cn(
+                                            "break-all animate-fade-in whitespace-pre-line wrap-break-word",
+                                            {
+                                                "text-red-400":
+                                                    log.type === "error",
+                                                "text-emerald-400":
+                                                    log.type === "success",
+                                                "text-blue-400":
+                                                    log.type === "system",
+                                                "text-zinc-500 italic":
+                                                    log.type === "info",
+                                                "text-zinc-300": ![
+                                                    "error",
+                                                    "success",
+                                                    "system",
+                                                    "info",
+                                                ].includes(log.type),
+                                            }
+                                        )}
                                     >
                                         {log.type === "error" && (
                                             <XCircle className="inline w-3 h-3 mr-1.5 -mt-0.5" />
@@ -361,7 +381,13 @@ export default function App() {
                         <span>Monzurul Hasan</span>
                     </a>
                     <span className="w-px h-full bg-zinc-800 mr-2"></span>
-                    <a href="https://github.com/mhs003/codelive/releases/" target="_blank" className="font-[monospace] hover:text-zinc-400 hover:underline">{VERSION}</a>
+                    <a
+                        href="https://github.com/mhs003/codelive/releases/"
+                        target="_blank"
+                        className="font-[monospace] hover:text-zinc-400 hover:underline"
+                    >
+                        {VERSION}
+                    </a>
                 </div>
 
                 <div className="flex items-center gap-4">

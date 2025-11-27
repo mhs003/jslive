@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="src-tauri/icons/128x128.png" alt="icon" width="100" />
+  <img src="src-tauri/icons/icon.png" alt="icon" width="100" />
 </p>
 
 # CodeLive
 
-Lightweight live code runner written in **React** and **Tauri**.
+A lightweight code runner built with [**Tauri**](https://tauri.app/) and [**Vite**](https://vite.dev/) with [**React**](https://react.dev/). It acts as a simple wrapper around the language binaries already installed on your system, using them directly to execute code.
 
 ---
 
@@ -12,7 +12,7 @@ Lightweight live code runner written in **React** and **Tauri**.
 
 | NodeJS | PHP | Python |
 |--------|-----|--------|
-| [![NodeJS runner](assets/screenshot-nodejs.png)](assets/screenshot-nodejs.png) | [![PHP runner](assets/screenshot-php.png)](assets/screenshot-php.png) | [![Python runner](assets/screenshot-python.png)](assets/screenshot-python.png) |
+| ![NodeJS runner](assets/screenshot-nodejs.png) | ![PHP runner](assets/screenshot-php.png) | ![Python runner](assets/screenshot-python.png) |
 
 
 ---
@@ -26,20 +26,19 @@ Or build from source:
 
 ### Prerequisites
 
-- Node.js 16+ (npm, pnpm, or yarn)  
-- Rust toolchain (stable) and cargo
-- [See all prerequisites](https://tauri.app/start/prerequisites/) of tauri
+- Linux (of course)
+- [See other prerequisites in Tauri docs](https://tauri.app/start/prerequisites/)
 
-### Install & Run (Frontend Dev)
+### Install nodejs dependencies
 
 ```bash
-npm install       # install JS dependencies
+npm install
 ````
 
 ### Run the App with Tauri (Dev)
 
 ```bash
-npm run tauri dev
+npm run tauri dev       # you don't need to start react dev server, this will start both react and tauri
 ```
 
 ### Build Production Bundle
