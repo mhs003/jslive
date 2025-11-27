@@ -70,7 +70,7 @@ export default function App() {
     const [isDragging, setIsDraggint] = useState<boolean>(false);
     const [editorWidth, setEditorWidth] = useState<number>(50);
     const [isRunning, setIsRunning] = useState<boolean>(false);
-    // const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
+    const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
     const [logs, setLogs] = useState([
         {
             id: 1,
@@ -238,6 +238,15 @@ export default function App() {
                             theme={dracula}
                             extensions={currentLang.editor_extensions}
                             onChange={onCodeChange}
+                            onUpdate={(view) => {
+                                const pos = view.state.selection.main.head;
+                                const line = view.state.doc.lineAt(pos);
+                                setCursorPos({
+                                    line: line.number,
+                                    col: pos - line.from + 1
+                                });
+                            }}
+                            autoFocus
                         />
                     </div>
                 </div>
@@ -353,8 +362,7 @@ export default function App() {
 
                 <div className="flex items-center gap-4">
                     <span className="font-mono">
-                        Ln 0 {/* {cursorPos.line} */}, Col 0
-                        {/* {cursorPos.col} */}
+                        Ln {cursorPos.line}, Col {cursorPos.col}
                     </span>
                     <span className="hidden sm:inline">UTF-8</span>
                     <span className="hidden sm:inline text-blue-400">
