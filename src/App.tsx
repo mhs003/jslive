@@ -1,9 +1,8 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import CodeMirror, { Extension } from "@uiw/react-codemirror";
-import { javascript, typescriptLanguage } from "@codemirror/lang-javascript";
+import { javascript } from "@codemirror/lang-javascript";
 import { php } from "@codemirror/lang-php";
 import { python } from "@codemirror/lang-python";
-// import { aura } from "@uiw/codemirror-theme-aura";
 import { dracula } from "@uiw/codemirror-theme-dracula";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -20,16 +19,18 @@ import {
 import { Button } from "./components/button";
 import IconGithub from "./components/icon-github";
 import { cn } from "./lib/utils";
+import { useLocalStorage } from "./hooks/use-local-storage";
+import { useKeyPress } from "./hooks/use-key-press";
 
 type LanguageConfig = {
     name: string;
     key: string;
     handler: string;
-    editor_extensions: Extension[] | undefined;
+    editor_extensions?: Extension[];
     snippet: string;
 };
 
-const VERSION = "v0.1.1";
+const VERSION = "v0.1.2";
 
 const LANGUAGES: LanguageConfig[] = [
     {
@@ -66,13 +67,14 @@ export default function App() {
     const debounceRef = useRef<number | null>(null);
     const logsEndRef = useRef<HTMLDivElement | null>(null);
 
-    const [code, setCode] = useState<string>("");
-    const [currentLang, setCurrentLang] = useState<LanguageConfig>(
-        LANGUAGES[0]
+    const [memoryLang, setMemoryLang] = useLocalStorage(
+        "lang",
+        LANGUAGES[0].key
     );
-    const [isDragging, setIsDraggint] = useState<boolean>(false);
-    const [editorWidth, setEditorWidth] = useState<number>(50);
-    const [isRunning, setIsRunning] = useState<boolean>(false);
+    const [code, setCode] = useState("");
+    const [editorWidth, setEditorWidth] = useState(50);
+    const [isDragging, setIsDragging] = useState(false);
+    const [isRunning, setIsRunning] = useState(false);
     const [cursorPos, setCursorPos] = useState({ line: 1, col: 1 });
     const [logs, setLogs] = useState([
         {
@@ -83,67 +85,28 @@ export default function App() {
         },
     ]);
 
-    const startDragging = () => {
-        setIsDraggint(true);
-        document.addEventListener("mousemove", onDrag);
-        document.addEventListener("mouseup", stopDragging);
-    };
-
-    const onDrag = (e: MouseEvent) => {
-        const percent = (e.clientX / window.innerWidth) * 100;
-        if (percent > 15 && percent < 85) setEditorWidth(percent);
-    };
-
-    const stopDragging = () => {
-        setIsDraggint(false);
-        document.removeEventListener("mousemove", onDrag);
-        document.removeEventListener("mouseup", stopDragging);
-    };
-
-    const handleLanguageChange = (
-        event: React.ChangeEvent<HTMLSelectElement>
-    ) => {
-        const sortLang =
-            LANGUAGES.find((e) => e.key === event.target.value) || LANGUAGES[0];
-        setCurrentLang(sortLang);
-        setCode(sortLang.snippet);
-        setLogs([]);
-        addLog("Language changed to " + sortLang.name, "info");
-    };
-
-
-    const onCodeChange = (value: string) => {
-        debounce((value: string) => {
-            setCode(value);
-        }, 500)(value);
-    };
-
-    function debounce<T extends (...args: any[]) => any>(fn: T, time: number) {
-        return (...args: Parameters<T>) => {
-            if (debounceRef.current) {
-                clearTimeout(debounceRef.current);
-            }
-
-            debounceRef.current = setTimeout(() => {
-                fn(...args);
-            }, time);
-        };
-    }
+    const currentLang =
+        LANGUAGES.find((l) => l.key === memoryLang) || LANGUAGES[0];
 
     useEffect(() => {
-        if(!!code) runCode(code, currentLang.handler);
-    }, [code])
+        setCode(currentLang.snippet);
+        setLogs([]);
+        addLog(`Language changed to ${currentLang.name}`, "info");
+    }, [memoryLang]);
 
-    async function runCode(freshCode: string, freshLang: string) {
-        const currentCode = freshCode;
-        const language = freshLang;
+    const onCodeChange = (value: string) => {
+        debounce((value) => setCode(value), 500)(value);
+    };
 
+    useEffect(() => {
+        if (code) runCode(code, currentLang.handler);
+    }, [code]);
+
+    async function runCode(code: string, handler: string) {
         setIsRunning(true);
         try {
-            const output: string = await invoke(language, {
-                code: currentCode,
-            });
-            addLog(output, "output");
+            const output = await invoke(handler, { code });
+            addLog(output as string, "output");
         } catch (err) {
             addLog(err as string, "error");
         } finally {
@@ -151,9 +114,8 @@ export default function App() {
         }
     }
 
-    // Log Management
     const addLog = (text: string, type: string = "output") => {
-        if (text.trim() === "") return;
+        if (!text.trim()) return;
         setLogs((prev) => [
             ...prev,
             { id: Date.now(), type, text, time: new Date() },
@@ -165,21 +127,73 @@ export default function App() {
         addLog("Console cleared", "info");
     };
 
-    // Auto-scroll console
     useEffect(() => {
         logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [logs]);
+
+    // Drag Resizing
+    const startDragging = () => {
+        setIsDragging(true);
+        document.addEventListener("mousemove", onDrag);
+        document.addEventListener("mouseup", stopDragging);
+    };
+    const onDrag = (e: MouseEvent) => {
+        const percent = (e.clientX / window.innerWidth) * 100;
+        if (percent > 15 && percent < 85) setEditorWidth(percent);
+    };
+    const stopDragging = () => {
+        setIsDragging(false);
+        document.removeEventListener("mousemove", onDrag);
+        document.removeEventListener("mouseup", stopDragging);
+    };
+
+    // Keyboard Shortcuts
+    useKeyPress("Ctrl+r", (e) => {
+        e.preventDefault();
+        runCode(code, currentLang.handler);
+    });
+    useKeyPress("Ctrl+l", (e) => {
+        e.preventDefault();
+        clearLogs();
+    });
+    useKeyPress("Ctrl+n", (e) => {
+        e.preventDefault();
+        setMemoryLang(nextLang(memoryLang)?.key || memoryLang);
+    });
+    useKeyPress("Ctrl+Shift+N", (e) => {
+        e.preventDefault();
+        setMemoryLang(prevLang(memoryLang)?.key || memoryLang);
+    });
+
+    // helper functions
+    const nextLang = (key: string) => {
+        const i = LANGUAGES.findIndex((l) => l.key === key);
+        return i !== -1 ? LANGUAGES[(i + 1) % LANGUAGES.length] : null;
+    };
+    const prevLang = (key: string) => {
+        const i = LANGUAGES.findIndex((l) => l.key === key);
+        return i !== -1
+            ? LANGUAGES[(i - 1 + LANGUAGES.length) % LANGUAGES.length]
+            : null;
+    };
+    function debounce<T extends (...args: any[]) => any>(fn: T, time: number) {
+        return (...args: Parameters<T>) => {
+            if (debounceRef.current) {
+                clearTimeout(debounceRef.current);
+            }
+            debounceRef.current = setTimeout(() => {
+                fn(...args);
+            }, time);
+        };
+    }
 
     return (
         <div
             className={cn(
                 "flex flex-col h-screen bg-zinc-950 text-zinc-100 font-sans select-none overflow-hidden selection:bg-blue-500/30",
-                {
-                    "cursor-col-resize": isDragging,
-                }
+                { "cursor-col-resize": isDragging }
             )}
         >
-            {/* Header Navbar */}
             <nav className="h-14 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
@@ -190,21 +204,17 @@ export default function App() {
                             CodeLive
                         </span>
                     </div>
-
                     <div className="h-4 w-px bg-zinc-800 mx-2" />
-
                     <div className="hidden md:flex items-center gap-2 text-sm text-zinc-400 bg-zinc-900/50 px-3 py-1.5 rounded-md border border-zinc-800/50">
                         <FileCode className="w-4 h-4 text-blue-400" />
                         <span>{currentLang.name}</span>
                     </div>
                 </div>
-                {/*  */}
                 <div className="flex items-center gap-3">
-                    {/* Language Selector */}
                     <div className="relative">
                         <select
-                            value={currentLang.key}
-                            onChange={handleLanguageChange}
+                            value={memoryLang}
+                            onChange={(e) => setMemoryLang(e.target.value)}
                             className="appearance-none bg-zinc-900 text-sm pl-3 pr-8 py-2 rounded-md border border-zinc-800 focus:border-zinc-600 focus:ring-1 focus:ring-zinc-700 outline-none cursor-pointer hover:bg-zinc-800 transition-colors"
                         >
                             {LANGUAGES.map((lang) => (
@@ -215,7 +225,6 @@ export default function App() {
                         </select>
                         <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 pointer-events-none" />
                     </div>
-
                     <Button
                         onClick={() => runCode(code, currentLang.handler)}
                         variant="success"
@@ -231,14 +240,12 @@ export default function App() {
                     </Button>
                 </div>
             </nav>
-            {/* Grid Body */}
+
             <main className="flex-1 flex overflow-hidden">
-                {/* Grid-left | Editor */}
                 <div
                     className="flex flex-col border-r border-zinc-800 bg-[#282a36]"
                     style={{ width: `${editorWidth}%` }}
                 >
-                    {" "}
                     <div className="h-9 bg-zinc-900 border-b border-zinc-800 flex items-center px-4 justify-between select-none">
                         <span className="text-xs font-[monospace] text-zinc-400 font-medium">
                             EDITOR
@@ -269,13 +276,10 @@ export default function App() {
                     onMouseDown={startDragging}
                     className={cn(
                         "w-1 cursor-col-resize bg-zinc-800 hover:bg-emerald-700 transition-colors",
-                        {
-                            "bg-emerald-700": isDragging,
-                        }
+                        { "bg-emerald-700": isDragging }
                     )}
                 />
 
-                {/* Grid-right | Console */}
                 <div className="flex flex-col bg-zinc-950 flex-1">
                     <div className="h-9 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between px-4 select-none">
                         <div className="flex gap-6 h-full">
@@ -316,11 +320,9 @@ export default function App() {
                                             }
                                         )}
                                     >
-                                        {log.time
-                                            ? log.time.toLocaleTimeString([], {
-                                                  hour12: false,
-                                              })
-                                            : ""}
+                                        {log.time?.toLocaleTimeString([], {
+                                            hour12: false,
+                                        })}
                                     </span>
                                     <span
                                         className={cn(
@@ -358,15 +360,7 @@ export default function App() {
                             ))}
                             <div ref={logsEndRef} />
                         </div>
-
-                        {/* <div className="flex items-center mt-3 text-zinc-400">
-                            <span className="text-blue-500 mr-2 select-none">
-                                ❯
-                            </span>
-                            <div className="w-2 h-4 bg-zinc-600 animate-[pulse_1s_ease-in-out_infinite]" />
-                        </div> */}
                     </div>
-                    {/*  */}
                 </div>
             </main>
 

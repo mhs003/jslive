@@ -7,7 +7,8 @@ use tauri::command;
 
 fn do_exec(interpreter: &str, file_ext: &str, code: &str, args: &[&str]) -> Result<String, String> {
     let mut path = std::env::temp_dir();
-    path.push(format!("codelive_exec_{}.{}", uuid::Uuid::new_v4(), file_ext));
+    let temp_path = format!("codelive_exec_{}.{}", uuid::Uuid::new_v4(), file_ext);
+    path.push(temp_path);
 
     {
         let mut file = File::create(&path)
