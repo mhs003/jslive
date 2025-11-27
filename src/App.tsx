@@ -10,7 +10,6 @@ import {
     Trash2,
     ChevronDown,
     Terminal,
-    FileCode,
     Check,
     XCircle,
     LoaderCircle,
