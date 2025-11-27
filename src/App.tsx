@@ -8,7 +8,6 @@ import { invoke } from "@tauri-apps/api/core";
 import {
     Play,
     Trash2,
-    Code2,
     ChevronDown,
     Terminal,
     FileCode,
@@ -21,6 +20,7 @@ import IconGithub from "./components/icon-github";
 import { cn } from "./lib/utils";
 import { useLocalStorage } from "./hooks/use-local-storage";
 import { useKeyPress } from "./hooks/use-key-press";
+import icon48x48 from "./assets/48x48.png"
 
 type LanguageConfig = {
     name: string;
@@ -196,19 +196,20 @@ export default function App() {
         >
             <nav className="h-14 border-b border-zinc-800 bg-zinc-950/50 backdrop-blur flex items-center justify-between px-4 shrink-0">
                 <div className="flex items-center gap-4">
-                    <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
-                            <Code2 className="w-5 h-5 text-white" />
+                    <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 border border-blue-900 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
+                            <img src={icon48x48} className="w-5 h-5 pointer-events-none" />
                         </div>
                         <span className="font-bold text-lg tracking-tight">
                             CodeLive
                         </span>
                     </div>
-                    <div className="h-4 w-px bg-zinc-800 mx-2" />
-                    <div className="hidden md:flex items-center gap-2 text-sm text-zinc-400 bg-zinc-900/50 px-3 py-1.5 rounded-md border border-zinc-800/50">
+                    {/* <div className="h-4 w-px bg-zinc-800 ml-2 mr-1" />
+                    <span className="text-zinc-500 text-xs font-[monospace]">love is a grave mental disease</span> */}
+                    {/* <div className="hidden md:flex items-center gap-2 text-sm text-zinc-400 bg-zinc-900/50 px-3 py-1.5 rounded-md border border-zinc-800/50">
                         <FileCode className="w-4 h-4 text-blue-400" />
                         <span>{currentLang.name}</span>
-                    </div>
+                    </div> */}
                 </div>
                 <div className="flex items-center gap-3">
                     <div className="relative">
