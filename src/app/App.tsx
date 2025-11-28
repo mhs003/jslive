@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import CodeMirror, { Extension } from "@uiw/react-codemirror";
+import CodeMirror, {
+    Extension,
+    ReactCodeMirrorRef,
+} from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { php } from "@codemirror/lang-php";
 import { python } from "@codemirror/lang-python";
@@ -14,12 +17,12 @@ import {
     XCircle,
     LoaderCircle,
 } from "lucide-react";
-import { Button } from "./components/button";
-import IconGithub from "./components/icon-github";
-import { cn } from "./lib/utils";
-import { useLocalStorage } from "./hooks/use-local-storage";
-import { useKeyPress } from "./hooks/use-key-press";
-import icon48x48 from "./assets/48x48.png";
+import { Button } from "@/components/button.tsx";
+import IconGithub from "@/components/icon-github";
+import { cn } from "@/lib/utils";
+import { useLocalStorage } from "@/hooks/use-local-storage";
+import { useKeyPress } from "@/hooks/use-key-press";
+import icon48x48 from "@/assets/48x48.png";
 
 type LanguageConfig = {
     name: string;
@@ -63,6 +66,7 @@ const LANGUAGES: LanguageConfig[] = [
 ];
 
 export default function App() {
+    const editorRef = useRef<ReactCodeMirrorRef | null>(null);
     const debounceRef = useRef<number | null>(null);
     const logsEndRef = useRef<HTMLDivElement | null>(null);
     const cursorLastPos = useRef({ line: 1, col: 1 });
@@ -71,6 +75,11 @@ export default function App() {
         "lang",
         LANGUAGES[0].key
     );
+    const [autoRunEnable, setAutoRunEnable] = useLocalStorage(
+        "autorunenabled",
+        true
+    );
+
     const [code, setCode] = useState("");
     const [editorWidth, setEditorWidth] = useState(50);
     const [isDragging, setIsDragging] = useState(false);
@@ -92,11 +101,14 @@ export default function App() {
         setCode(currentLang.snippet);
         setLogs([]);
         addLog(`Language changed to ${currentLang.name}`, "info");
+        editorRef.current?.view?.focus();
     }, [memoryLang]);
 
+    useEffect(() => editorRef.current?.view?.focus(), [autoRunEnable]);
+
     const onCodeChange = useCallback(
-        debounce((v) => setCode(v), 500),
-        []
+        debounce((v) => setCode(v), autoRunEnable ? 500 : 0),
+        [autoRunEnable]
     );
 
     const handleCideMirrorUpdate = useCallback((view: any) => {
@@ -117,10 +129,13 @@ export default function App() {
     }, []);
 
     useEffect(() => {
-        if (code) runCode(code, currentLang.handler);
+        if (code && autoRunEnable) runCode(code, currentLang.handler);
     }, [code]);
 
     async function runCode(code: string, handler: string) {
+        editorRef.current?.view?.focus();
+
+        if (!String(code).trim()) return;
         setIsRunning(true);
         try {
             const output = await invoke(handler, { code });
@@ -133,7 +148,7 @@ export default function App() {
     }
 
     const addLog = (text: string, type: string = "output") => {
-        if (!text.trim()) return;
+        if (!String(text).trim()) return;
         setLogs((prev) => [
             ...prev.slice(-100),
             { id: Date.now(), type, text, time: new Date() },
@@ -143,6 +158,7 @@ export default function App() {
     const clearLogs = () => {
         setLogs([]);
         addLog("Console cleared", "info");
+        editorRef.current?.view?.focus();
     };
 
     useEffect(() => {
@@ -225,8 +241,25 @@ export default function App() {
                             CodeLive
                         </span>
                     </div>
-                    {/* <div className="h-4 w-px bg-zinc-800 ml-2 mr-1" />
-                    <span className="text-zinc-500 text-xs font-[monospace]">love is a grave mental disease</span> */}
+                    <div className="h-4 w-px bg-zinc-800 ml-2 mr-1" />
+                    <label
+                        htmlFor="autoruncb"
+                        className="flex justify-center items-center gap-2 cursor-pointer relative"
+                    >
+                        <input
+                            type="checkbox"
+                            id="autoruncb"
+                            className="invisible absolute peer"
+                            checked={autoRunEnable}
+                            onChange={() => setAutoRunEnable(!autoRunEnable)}
+                        />
+                        <span className="border border-zinc-700 bg-zinc-900 rounded w-5 h-5 p-0.5 block peer-checked:hidden"></span>
+                        <span className="border border-zinc-600 bg-zinc-800 rounded w-5 h-5 p-0.5 hidden peer-checked:block">
+                            <Check size={14} />
+                        </span>
+                        <span className="text-xs">Auto Run</span>
+                    </label>
+                    {/* <span className="text-zinc-500 text-xs font-[monospace]">love is a grave mental disease</span> */}
                     {/* <div className="hidden md:flex items-center gap-2 text-sm text-zinc-400 bg-zinc-900/50 px-3 py-1.5 rounded-md border border-zinc-800/50">
                         <FileCode className="w-4 h-4 text-blue-400" />
                         <span>{currentLang.name}</span>
@@ -276,6 +309,7 @@ export default function App() {
                     </div>
                     <div className="flex-1 relative overflow-hidden">
                         <CodeMirror
+                            ref={editorRef}
                             value={code}
                             height="100%"
                             className="h-full"
