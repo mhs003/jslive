@@ -1,1 +1,3 @@
+main: npm run tauri dev
+build: npm run tauri build
 tauri: npm run tauri

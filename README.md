@@ -26,7 +26,6 @@ Or build from source:
 
 ### Prerequisites
 
-- Linux (of course)
 - [See other prerequisites in Tauri docs](https://tauri.app/start/prerequisites/)
 
 ### Install nodejs dependencies

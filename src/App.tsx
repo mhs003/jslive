@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import CodeMirror, { Extension } from "@uiw/react-codemirror";
 import { javascript } from "@codemirror/lang-javascript";
 import { php } from "@codemirror/lang-php";
@@ -19,7 +19,7 @@ import IconGithub from "./components/icon-github";
 import { cn } from "./lib/utils";
 import { useLocalStorage } from "./hooks/use-local-storage";
 import { useKeyPress } from "./hooks/use-key-press";
-import icon48x48 from "./assets/48x48.png"
+import icon48x48 from "./assets/48x48.png";
 
 type LanguageConfig = {
     name: string;
@@ -65,6 +65,7 @@ const LANGUAGES: LanguageConfig[] = [
 export default function App() {
     const debounceRef = useRef<number | null>(null);
     const logsEndRef = useRef<HTMLDivElement | null>(null);
+    const cursorLastPos = useRef({ line: 1, col: 1 });
 
     const [memoryLang, setMemoryLang] = useLocalStorage(
         "lang",
@@ -93,9 +94,27 @@ export default function App() {
         addLog(`Language changed to ${currentLang.name}`, "info");
     }, [memoryLang]);
 
-    const onCodeChange = (value: string) => {
-        debounce((value) => setCode(value), 500)(value);
-    };
+    const onCodeChange = useCallback(
+        debounce((v) => setCode(v), 500),
+        []
+    );
+
+    const handleCideMirrorUpdate = useCallback((view: any) => {
+        const pos = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(pos);
+        const newPos = {
+            line: line.number,
+            col: pos - line.from + 1,
+        };
+
+        if (
+            newPos.line !== cursorLastPos.current.line ||
+            newPos.col !== cursorLastPos.current.col
+        ) {
+            cursorLastPos.current = newPos;
+            setCursorPos(newPos);
+        }
+    }, []);
 
     useEffect(() => {
         if (code) runCode(code, currentLang.handler);
@@ -116,7 +135,7 @@ export default function App() {
     const addLog = (text: string, type: string = "output") => {
         if (!text.trim()) return;
         setLogs((prev) => [
-            ...prev,
+            ...prev.slice(-100),
             { id: Date.now(), type, text, time: new Date() },
         ]);
     };
@@ -197,7 +216,10 @@ export default function App() {
                 <div className="flex items-center gap-4">
                     <div className="flex items-center gap-3">
                         <div className="w-8 h-8 border border-blue-900 rounded-lg flex items-center justify-center shadow-lg shadow-blue-900/20">
-                            <img src={icon48x48} className="w-5 h-5 pointer-events-none" />
+                            <img
+                                src={icon48x48}
+                                className="w-5 h-5 pointer-events-none"
+                            />
                         </div>
                         <span className="font-bold text-lg tracking-tight">
                             CodeLive
@@ -230,6 +252,7 @@ export default function App() {
                         variant="success"
                         className="cursor-pointer"
                         disabled={isRunning}
+                        title="Run (Ctrl+R)"
                     >
                         {isRunning ? (
                             <LoaderCircle className="w-4 h-4 mr-2 animate-spin" />
@@ -259,14 +282,7 @@ export default function App() {
                             theme={dracula}
                             extensions={currentLang.editor_extensions}
                             onChange={onCodeChange}
-                            onUpdate={(view) => {
-                                const pos = view.state.selection.main.head;
-                                const line = view.state.doc.lineAt(pos);
-                                setCursorPos({
-                                    line: line.number,
-                                    col: pos - line.from + 1,
-                                });
-                            }}
+                            onUpdate={handleCideMirrorUpdate}
                             autoFocus
                         />
                     </div>
@@ -290,7 +306,7 @@ export default function App() {
                         <button
                             onClick={clearLogs}
                             className="text-zinc-500 hover:text-red-400 transition-colors p-1 rounded-sm hover:bg-zinc-800"
-                            title="Clear Console"
+                            title="Clear Console (Ctrl+L)"
                         >
                             <Trash2 className="w-4 h-4" />
                         </button>
